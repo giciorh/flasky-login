@@ -6,10 +6,22 @@ from werkzeug.security import generate_password_hash, check_password_hash
 auth = Blueprint('auth', __name__)
 
 
-@auth.route('/login', methods=['post', 'get'])
+@auth.route('/login', methods=['POST', 'GET'])
 def login():
-  data = request.form
-  print(data)
+  if request.method == 'POST':
+    email = request.form.get('email')
+    password = request.form.get('password')
+
+    user = User.query.filter_by(email=email).first()
+    if user:
+      if check_password_hash(user.password, password):
+        flash('Logged in successfully', category='success')
+        redirect(url_for('views.home'))
+      else:
+        flash('Incorrect password. Try again', category='error')
+    else:
+      flash('Email doesn\'t exist', category='error')
+
   return render_template("login.html", boolean=True)
 
 
@@ -26,7 +38,10 @@ def signup():
     password1 = request.form.get('password1')
     password2 = request.form.get('password2')
 
-    if len(email) < 4:
+    user = User.query.filter_by(email=email).first()
+    if user:
+      flash('Email already exist', category='error')
+    elif len(email) < 4:
       flash('Email must be greater than 4 chars.', category="error")
     elif len(firstName) < 2:
       flash('Name must be greater than 2 chars.', category="error")
@@ -41,6 +56,7 @@ def signup():
                       password=generate_password_hash(password1,
                                                       method='sha256'))
       db.session.add(new_user)
+      db.session.commit()
 
       flash('Account was created.', category="success")
       return redirect(url_for('views.home'))
